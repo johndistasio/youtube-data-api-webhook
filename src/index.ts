@@ -27,6 +27,8 @@ export interface Env {
 
 export default {
 	async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
-		return new Response('Hello World!');
+		const body = await request.text();
+		console.log(body);
+		return new Response(null, { status: 200 });
 	},
 };
