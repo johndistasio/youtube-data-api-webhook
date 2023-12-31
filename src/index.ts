@@ -27,8 +27,21 @@ export interface Env {
 
 export default {
 	async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
-		const body = await request.text();
-		console.log(body);
-		return new Response(null, { status: 200 });
+		switch (request.method) {
+			case 'GET':
+				const token = new URL(request.url)?.searchParams.get('hub.challenge');
+
+				if (!token) {
+					return new Response(null, { status: 400 });
+				}
+				
+				return new Response(token, { status: 200 });
+			case 'POST':
+				const body = await request.text();
+				console.log(body);
+				return new Response(null, { status: 200 });
+			default:
+				return new Response(null, { status: 405 });
+		}
 	},
 };
