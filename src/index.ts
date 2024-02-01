@@ -8,31 +8,36 @@ export interface Env {
 	OTEL_EXPORTER_OTLP_LOGS_ENDPOINT: string;
 }
 
-const getChannelId = (topic: string | null) => {
-	if (!topic) {
-		return '';
-	}
+const getSubscriptionParams = (url: string) => {
+	const params = new URL(url)?.searchParams;
 
-	return new URL(decodeURIComponent(topic))?.searchParams.get('channel_id') || '';
-};
+	const token = params?.get('hub.challenge') || '';
+	const mode = params?.get('hub.mode') || '';
+	const lease_seconds = params?.get('hub.lease_seconds') || '';
+
+	const topic = params?.get('hub.topic') || '';
+	const channelId = new URL(decodeURIComponent(topic)).searchParams.get('channel_id') || '';
+
+	return { token, mode, lease_seconds, channelId }
+}
 
 const handler = {
 	async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
 		switch (request.method) {
 			case 'GET':
-				const url = new URL(request.url);
-				const token = url?.searchParams.get('hub.challenge');
+				const { token, mode, lease_seconds, channelId } = getSubscriptionParams(request.url);
 
 				if (!token) {
 					return new Response(null, { status: 400 });
 				}
 
-				const mode = url?.searchParams.get('hub.mode') || '';
-				const lease_seconds = url?.searchParams.get('hub.lease_seconds') || '';
+				const span = trace.getActiveSpan();
 
-				trace.getActiveSpan()?.setAttribute('youtube.hub.mode', mode);
-				trace.getActiveSpan()?.setAttribute('youtube.hub.lease_seconds', lease_seconds);
-				trace.getActiveSpan()?.setAttribute('youtube.channel_id', getChannelId(url?.searchParams.get('hub.topic')));
+				if (span) {
+					span.setAttribute('youtube.hub.mode', mode);
+					span.setAttribute('youtube.hub.lease_seconds', lease_seconds);
+					span.setAttribute('youtube.channel_id', channelId);
+				}
 
 				return new Response(token, { status: 200 });
 			case 'POST':
