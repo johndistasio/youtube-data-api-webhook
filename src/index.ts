@@ -1,8 +1,13 @@
+import { instrument, ResolveConfigFn } from '@microlabs/otel-cf-workers';
+
 export interface Env {
 	BUCKET: R2Bucket;
+	HYPERDX_API_KEY: string;
+	OTEL_SERVICE_NAME: string;
+	OTEL_EXPORTER_OTLP_LOGS_ENDPOINT: string;
 }
 
-export default {
+const handler = {
 	async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
 		switch (request.method) {
 			case 'GET':
@@ -31,3 +36,19 @@ export default {
 		}
 	},
 };
+
+const config: ResolveConfigFn = (env: Env, _trigger) => {
+	return {
+		exporter: {
+			headers: {
+				'authorization': env.HYPERDX_API_KEY,
+			},
+			url: env.OTEL_EXPORTER_OTLP_LOGS_ENDPOINT,
+		},
+		service: {
+			name: env.OTEL_SERVICE_NAME,
+		},
+	}
+};
+
+export default instrument(handler, config);

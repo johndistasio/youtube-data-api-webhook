@@ -1,6 +1,12 @@
 name = "youtube-data-api-webhook"
 main = "src/index.ts"
 compatibility_date = "2023-12-18"
+compatibility_flags = [ "nodejs_compat" ]
+
+[vars]
+OTEL_SERVICE_NAME = "youtube-data-api-webhook"
+OTEL_EXPORTER_OTLP_LOGS_ENDPOINT = "https://in-otel.hyperdx.io/v1/traces"
+
 
 # Bind an R2 Bucket. Use R2 to store arbitrarily large blobs of data, such as files.
 # Docs: https://developers.cloudflare.com/r2/api/workers/workers-api-usage/
