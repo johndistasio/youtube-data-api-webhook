@@ -1,3 +1,4 @@
+import { trace } from '@opentelemetry/api';
 import { instrument, ResolveConfigFn } from '@microlabs/otel-cf-workers';
 
 export interface Env {
@@ -7,15 +8,31 @@ export interface Env {
 	OTEL_EXPORTER_OTLP_LOGS_ENDPOINT: string;
 }
 
+const getChannelId = (topic: string | null) => {
+	if (!topic) {
+		return '';
+	}
+
+	return new URL(decodeURIComponent(topic))?.searchParams.get('channel_id') || '';
+};
+
 const handler = {
 	async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
 		switch (request.method) {
 			case 'GET':
-				const token = new URL(request.url)?.searchParams.get('hub.challenge');
+				const url = new URL(request.url);
+				const token = url?.searchParams.get('hub.challenge');
 
 				if (!token) {
 					return new Response(null, { status: 400 });
 				}
+
+				const mode = url?.searchParams.get('hub.mode') || '';
+				const lease_seconds = url?.searchParams.get('hub.lease_seconds') || '';
+
+				trace.getActiveSpan()?.setAttribute('youtube.hub.mode', mode);
+				trace.getActiveSpan()?.setAttribute('youtube.hub.lease_seconds', lease_seconds);
+				trace.getActiveSpan()?.setAttribute('youtube.channel_id', getChannelId(url?.searchParams.get('hub.topic')));
 
 				return new Response(token, { status: 200 });
 			case 'POST':
